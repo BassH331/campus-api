@@ -1,3 +1,4 @@
+// controllers/buildingsController.js
 const { connectToDatabase } = require('../utils/mongoClient');
 
 exports.getAllBuildings = async (req, res) => {
