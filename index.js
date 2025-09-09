@@ -34,6 +34,6 @@ app.use(async (req, res, next) => {
 app.use("/api/buildings", buildingRoutes);
 app.use("/api/coordinates", coordinatesRoutes);
 app.use("/api/links", linksRoutes);
-app.use("/api/routes", routesRoutes);
+
 
 module.exports = app; // exported for Vercel
