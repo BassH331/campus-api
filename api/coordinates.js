@@ -12,24 +12,26 @@ async function connectToDatabase() {
 
 export default async function handler(req, res) {
   try {
+    const db = await connectToDatabase();
     const { name } = req.query;
 
-    if (!name) {
-      return res.status(400).json({ error: "Query parameter 'name' is required" });
-    }
+    let coordinates;
+    if (name) {
+      coordinates = await db.collection('coordinates').findOne({
+        name: { $regex: new RegExp(`^${name}$`, 'i') }
+      });
 
-    const db = await connectToDatabase();
-    const coordinates = await db.collection('coordinates').findOne({
-      name: { $regex: new RegExp(`^${name}$`, 'i') }
-    });
-
-    if (!coordinates) {
-      return res.status(404).json({ error: "No coordinates found for this name" });
+      if (!coordinates) {
+        return res.status(404).json({ error: 'No coordinates found for this name' });
+      }
+    } else {
+      // No name provided → return all
+      coordinates = await db.collection('coordinates').find({}).toArray();
     }
 
     res.status(200).json(coordinates);
   } catch (err) {
-    console.error("❌ DB Error:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error(err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 }
