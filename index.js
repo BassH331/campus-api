@@ -37,3 +37,8 @@ app.use("/api/links", linksRoutes);
 
 
 module.exports = app; // exported for Vercel
+
+app.use((err, req, res, next) => {
+  console.error("❌ API Error:", err);
+  res.status(500).json({ error: err.message });
+});
