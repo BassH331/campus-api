@@ -1,7 +1,19 @@
 // api/buildings.js
-const { connectToDatabase } = require('../db'); // your module
+import { MongoClient } from 'mongodb';
 
-module.exports = async (req, res) => {
+let cachedDb = null;
+
+async function connectToDatabase() {
+  if (cachedDb) return cachedDb;
+
+  const client = new MongoClient(process.env.MONGO_URI);
+  await client.connect();
+  const db = client.db(process.env.DB_NAME);
+  cachedDb = db;
+  return db;
+}
+
+export default async function handler(req, res) {
   try {
     const db = await connectToDatabase();
     const buildings = await db.collection('buildings').find({}).toArray();
@@ -10,4 +22,4 @@ module.exports = async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
-};
+}
