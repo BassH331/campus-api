@@ -18,8 +18,14 @@ app.use(express.json());
 app.use(async (req, res, next) => {
   try {
     req.db = await connectToDatabase();
+    console.log("📦 MONGO_URI present:", !!process.env.MONGO_URI);
+    console.log("📦 DB_NAME:", process.env.DB_NAME);
     next();
+    console.log("📦 MONGO_URI present:", !!process.env.MONGO_URI);
+    console.log("📦 DB_NAME:", process.env.DB_NAME);
   } catch (err) {
+    console.log("📦 MONGO_URI present:", !!process.env.MONGO_URI);
+    console.log("📦 DB_NAME:", process.env.DB_NAME);
     next(err); // let error handler catch it
   }
 });
@@ -34,5 +40,6 @@ app.use((err, req, res, next) => {
   console.error("❌ API Error:", err);
   res.status(500).json({ error: err.message });
 });
-
+console.log("📦 MONGO_URI present:", !!process.env.MONGO_URI);
+console.log("📦 DB_NAME:", process.env.DB_NAME);
 module.exports = app;
