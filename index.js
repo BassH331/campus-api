@@ -35,6 +35,8 @@ app.use("/api/buildings", buildingRoutes);
 app.use("/api/coordinates", coordinatesRoutes);
 app.use("/api/links", linksRoutes);
 
+
+
 // Error handler (must be last)
 app.use((err, req, res, next) => {
   console.error("❌ API Error:", err);
