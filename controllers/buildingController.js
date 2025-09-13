@@ -1,12 +1,10 @@
 // controllers/buildingsController.js
-const { connectToDatabase } = require('../utils/mongoClient');
 const { ObjectId } = require('mongodb');
 
 // Get all buildings
 exports.getAllBuildings = async (req, res) => {
   try {
-    const db = await connectToDatabase();
-    const buildings = await db.collection('buildings').find({}).toArray();
+    const buildings = await req.db.collection('buildings').find({}).toArray();
     res.json(buildings);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch buildings' });
@@ -16,8 +14,7 @@ exports.getAllBuildings = async (req, res) => {
 // Get building by ID
 exports.getBuildingById = async (req, res) => {
   try {
-    const db = await connectToDatabase();
-    const building = await db.collection('buildings').findOne({ _id: new ObjectId(req.params.id) });
+    const building = await req.db.collection('buildings').findOne({ _id: new ObjectId(req.params.id) });
     if (!building) return res.status(404).json({ error: 'Building not found' });
     res.json(building);
   } catch (err) {
@@ -28,7 +25,6 @@ exports.getBuildingById = async (req, res) => {
 // Create new building
 exports.createBuilding = async (req, res) => {
   try {
-    const db = await connectToDatabase();
     const newBuilding = {
       name: req.body.name,
       description: req.body.description || '',
@@ -36,7 +32,7 @@ exports.createBuilding = async (req, res) => {
       contact: req.body.contact || '',
       operatingHours: req.body.operatingHours || req.body.hours || ''
     };
-    const result = await db.collection('buildings').insertOne(newBuilding);
+    const result = await req.db.collection('buildings').insertOne(newBuilding);
     res.status(201).json({ message: 'Building created', id: result.insertedId });
   } catch (err) {
     res.status(500).json({ error: 'Failed to create building' });
@@ -46,7 +42,6 @@ exports.createBuilding = async (req, res) => {
 // Update building
 exports.updateBuilding = async (req, res) => {
   try {
-    const db = await connectToDatabase();
     const updatedData = {
       ...(req.body.name && { name: req.body.name }),
       ...(req.body.description && { description: req.body.description }),
@@ -55,7 +50,7 @@ exports.updateBuilding = async (req, res) => {
       ...(req.body.operatingHours && { operatingHours: req.body.operatingHours }),
       ...(req.body.hours && { operatingHours: req.body.hours })
     };
-    const result = await db.collection('buildings').updateOne(
+    const result = await req.db.collection('buildings').updateOne(
       { _id: new ObjectId(req.params.id) },
       { $set: updatedData }
     );
@@ -69,8 +64,7 @@ exports.updateBuilding = async (req, res) => {
 // Delete building
 exports.deleteBuilding = async (req, res) => {
   try {
-    const db = await connectToDatabase();
-    const result = await db.collection('buildings').deleteOne({ _id: new ObjectId(req.params.id) });
+    const result = await req.db.collection('buildings').deleteOne({ _id: new ObjectId(req.params.id) });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'Building not found' });
     res.json({ message: 'Building deleted' });
   } catch (err) {
