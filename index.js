@@ -1,4 +1,3 @@
-// index.js
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -12,7 +11,17 @@ const linksRoutes = require("./routes/linksRoutes");
 const routesRoutes = require("./routes/routesRoutes");
 
 const app = express();
-app.use(cors());
+
+// CORS setup
+app.use(cors({
+  origin: "*", // or specify your frontend URL
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"]
+}));
+
+// Handle preflight requests
+app.options("*", (req, res) => res.sendStatus(204));
+
 app.use(express.json());
 
 // Middleware to inject DB connection
