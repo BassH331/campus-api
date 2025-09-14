@@ -9,6 +9,7 @@ const buildingRoutes = require("./routes/buildingRoutes");
 const coordinatesRoutes = require("./routes/coordinatesRoutes");
 const linksRoutes = require("./routes/linksRoutes");
 const routesRoutes = require("./routes/routesRoutes");
+const uploadRoutes = require("./routes/uploads");
 
 const app = express();
 app.use(cors());
@@ -34,7 +35,10 @@ app.use(async (req, res, next) => {
 app.use("/api/buildings", buildingRoutes);
 app.use("/api/coordinates", coordinatesRoutes);
 app.use("/api/links", linksRoutes);
+app.use("/api/uploads", uploadRoutes);
 
+//So it can handle file uploads
+app.use(fileUpload());
 
 
 // Error handler (must be last)
