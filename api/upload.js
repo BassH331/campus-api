@@ -1,12 +1,21 @@
 // api/upload.js
 import formidable from "formidable";
-import fs from "fs";
 import fetch from "node-fetch";
 
 export const config = {
   api: {
-    bodyParser: false, // disable body parsing (we’ll use formidable)
+    bodyParser: false, // disable default body parsing
   },
+};
+
+// Helper to convert formidable file to base64
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    file.on("data", (chunk) => chunks.push(chunk));
+    file.on("end", () => resolve(Buffer.concat(chunks).toString("base64")));
+    file.on("error", reject);
+  });
 };
 
 export default async function handler(req, res) {
@@ -14,46 +23,40 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    const form = new formidable.IncomingForm();
+  const form = formidable({ keepExtensions: true });
 
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        console.error("Form parse error:", err);
-        return res.status(500).json({ error: "Error parsing form" });
-      }
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      console.error("Form parse error:", err);
+      return res.status(500).json({ error: "Error parsing form" });
+    }
 
-      const file = files.image;
-      if (!file) {
-        return res.status(400).json({ error: "No image file provided" });
-      }
+    const file = files.icon; // Make sure your frontend <input name="icon" />
+    if (!file) return res.status(400).json({ error: "No image file provided" });
 
-      // Read file as base64
-      const fileBuffer = fs.readFileSync(file.filepath);
-      const base64Image = fileBuffer.toString("base64");
+    try {
+      const base64Image = await fileToBase64(file);
 
-      // Upload to ImgBB
-      const response = await fetch(
+      const imgbbResponse = await fetch(
         `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
         {
           method: "POST",
-          body: new URLSearchParams({
-            image: base64Image,
-          }),
+          body: new URLSearchParams({ image: base64Image }),
         }
       );
 
-      const data = await response.json();
+      const data = await imgbbResponse.json();
 
       if (data.success) {
-        // Return the hosted image link
+        // Return the hosted image URL
         return res.status(200).json({ url: data.data.url });
       } else {
+        console.error("ImgBB upload failed:", data);
         return res.status(500).json({ error: "Upload failed", details: data });
       }
-    });
-  } catch (err) {
-    console.error("Error uploading image:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+    } catch (uploadErr) {
+      console.error("Upload error:", uploadErr);
+      return res.status(500).json({ error: "Failed to upload image" });
+    }
+  });
 }
