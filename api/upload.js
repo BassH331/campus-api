@@ -5,7 +5,7 @@ import fetch from "node-fetch";
 
 export const config = {
   api: {
-    bodyParser: false, // disable body parsing so we can handle files
+    bodyParser: false, // disable body parsing (we’ll use formidable)
   },
 };
 
@@ -23,35 +23,37 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "Error parsing form" });
       }
 
-      if (!files.image) {
-        return res.status(400).json({ error: "No image uploaded" });
+      const file = files.image;
+      if (!file) {
+        return res.status(400).json({ error: "No image file provided" });
       }
 
-      // Read file + convert to base64
-      const imageBuffer = fs.readFileSync(files.image.filepath);
-      const base64Image = imageBuffer.toString("base64");
+      // Read file as base64
+      const fileBuffer = fs.readFileSync(file.filepath);
+      const base64Image = fileBuffer.toString("base64");
 
       // Upload to ImgBB
-      const uploadRes = await fetch(
-        `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_KEY}`,
+      const response = await fetch(
+        `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
         {
           method: "POST",
-          body: new URLSearchParams({ image: base64Image }),
+          body: new URLSearchParams({
+            image: base64Image,
+          }),
         }
       );
-      const uploadData = await uploadRes.json();
 
-      if (!uploadData.success) {
-        console.error("ImgBB error:", uploadData);
-        return res.status(500).json({ error: "Failed to upload image" });
+      const data = await response.json();
+
+      if (data.success) {
+        // Return the hosted image link
+        return res.status(200).json({ url: data.data.url });
+      } else {
+        return res.status(500).json({ error: "Upload failed", details: data });
       }
-
-      return res.status(200).json({
-        url: uploadData.data.url,
-      });
     });
-  } catch (error) {
-    console.error("❌ Upload error:", error);
-    res.status(500).json({ error: "Internal server error" });
+  } catch (err) {
+    console.error("Error uploading image:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
