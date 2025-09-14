@@ -1,47 +1,71 @@
-import fetch from "node-fetch";
-import FormData from "form-data";
+const formidable = require('formidable');
+const fs = require('fs');
+const fetch = require('node-fetch');
+const { MongoClient } = require('mongodb');
 
-/**
- * Upload image to ImgBB
- */
-export const uploadImage = async (req, res) => {
+let cachedDb = null;
+async function connectToDatabase() {
+  if (cachedDb) return cachedDb;
+  const client = new MongoClient(process.env.MONGO_URI);
+  await client.connect();
+  cachedDb = client.db(process.env.DB_NAME);
+  return cachedDb;
+}
+
+const uploadImage = async (req, res) => {
   try {
-    if (!req.files || !req.files.image) {
-      return res.status(400).json({ error: "No image uploaded" });
-    }
+    const form = formidable({ multiples: false });
 
-    const imageFile = req.files.image;
-
-    // Convert to base64 (ImgBB API requires it)
-    const base64Image = imageFile.data.toString("base64");
-
-    const form = new FormData();
-    form.append("image", base64Image);
-
-    const response = await fetch(
-      `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_KEY}`,
-      {
-        method: "POST",
-        body: form,
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        console.error('Form parse error:', err);
+        return res.status(500).json({ error: 'Error parsing form' });
       }
-    );
 
-    const data = await response.json();
+      const file = files.icon || files.image; // match frontend input name
+      if (!file) {
+        return res.status(400).json({ error: 'No image file provided' });
+      }
 
-    if (!data.success) {
-      return res.status(500).json({
-        error: "ImgBB upload failed",
-        details: data,
+      // Read file as base64
+      const fileBuffer = fs.readFileSync(file.filepath);
+      const base64Image = fileBuffer.toString('base64');
+
+      // Upload to ImgBB
+      const imgbbResponse = await fetch(
+        `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
+        {
+          method: 'POST',
+          body: new URLSearchParams({ image: base64Image }),
+        }
+      );
+
+      const data = await imgbbResponse.json();
+
+      if (!data.success) {
+        console.error('ImgBB upload failed:', data);
+        return res.status(500).json({ error: 'Upload failed', details: data });
+      }
+
+      const imageUrl = data.data.url;
+
+      // Store in MongoDB links collection
+      const db = await connectToDatabase();
+      const result = await db.collection('links').insertOne({
+        name: fields.name || 'Unnamed',
+        imageurl: imageUrl,
+        createdAt: new Date(),
       });
-    }
 
-    return res.json({
-      url: data.data.url,
-      thumb: data.data.thumb.url,
-      deleteUrl: data.data.delete_url, // optional: ImgBB provides this
+      res.status(200).json({
+        id: result.insertedId,
+        url: imageUrl,
+      });
     });
   } catch (err) {
-    console.error("Upload error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error('Error uploading image:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+module.exports = { uploadImage };
