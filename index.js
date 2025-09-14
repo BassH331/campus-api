@@ -8,7 +8,6 @@ const { connectToDatabase } = require("./utils/mongoClient");
 const buildingRoutes = require("./routes/buildingRoutes");
 const coordinatesRoutes = require("./routes/coordinatesRoutes");
 const linksRoutes = require("./routes/linksRoutes");
-const routesRoutes = require("./routes/routesRoutes");
 const uploadRoutes = require("./routes/uploads");
 
 const app = express();
