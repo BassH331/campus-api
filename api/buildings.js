@@ -24,7 +24,12 @@ async function connectToDatabase() {
 const logError = (context, err, extra = {}) => {
   console.error('❌ ERROR CONTEXT:', context);
   if (Object.keys(extra).length) console.error('Extra info:', JSON.stringify(extra, null, 2));
+  if (err) {
   console.error('Stack:', err.stack || err);
+} else {
+  console.error('No error object provided.');
+}
+
 };
 
 export default async function handler(req, res) {
@@ -59,7 +64,7 @@ export default async function handler(req, res) {
         // CREATE
         const newBuilding = req.body;
         const insertResult = await db.collection('buildings').insertOne(newBuilding);
-        return res.status(201).json(insertResult.ops?.[0] || { ...newBuilding, _id: insertResult.insertedId });
+        return res.status(201).json({ ...newBuilding, _id: insertResult.insertedId });
 
       case 'PUT':
         // UPDATE
@@ -71,8 +76,9 @@ export default async function handler(req, res) {
         const updateResult = await db.collection('buildings').findOneAndUpdate(
           { _id: new ObjectId(id) },
           { $set: updatedData },
-          { returnDocument: 'after' }
+          { returnDocument: 'after' } // ✅ modern driver
         );
+
         if (!updateResult.value) {
           logError('PUT /api/buildings - not found', null, { id, body: updatedData });
           return res.status(404).json({ error: 'Building not found', providedId: id });
