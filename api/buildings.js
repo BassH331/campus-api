@@ -50,7 +50,7 @@ export default async function handler(req, res) {
             logError('GET /api/buildings - invalid ObjectId', null, { id });
             return res.status(400).json({ error: 'Invalid building ID', providedId: id });
           }
-          const building = await db.collection('buildings').findOne({ _id: new ObjectId(String(id)) });
+          const building = await db.collection('buildings').findOne({ _id: new ObjectId(id) });
           if (!building) {
             logError('GET /api/buildings - not found', null, { id });
             return res.status(404).json({ error: 'Building not found', providedId: id });
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
         }
         const updatedData = req.body;
         const updateResult = await db.collection('buildings').findOneAndUpdate(
-          { _id: new ObjectId(String(id)) },
+          { _id: new ObjectId(id) },
           { $set: updatedData },
           { returnDocument: 'after' }
         );
@@ -92,7 +92,7 @@ export default async function handler(req, res) {
           logError('DELETE /api/buildings - invalid ObjectId', null, { id });
           return res.status(400).json({ error: 'Invalid building ID', providedId: id });
         }
-        const deleteResult = await db.collection('buildings').deleteOne({ _id: new ObjectId(String(id)) });
+        const deleteResult = await db.collection('buildings').deleteOne({ _id: new ObjectId(id) });
         if (deleteResult.deletedCount === 0) {
           logError('DELETE /api/buildings - not found', null, { id });
           return res.status(404).json({ error: 'Building not found', providedId: id });
