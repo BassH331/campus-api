@@ -64,7 +64,7 @@ export default async function handler(req, res) {
         // CREATE
         const newBuilding = req.body;
         const insertResult = await db.collection('buildings').insertOne(newBuilding);
-        return res.status(201).json({ ...newBuilding, _id: insertResult.insertedId });
+        return res.status(201).json(insertResult.ops?.[0] || { ...newBuilding, _id: insertResult.insertedId });
 
       case 'PUT':
         // UPDATE
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
         const updateResult = await db.collection('buildings').findOneAndUpdate(
           { _id: new ObjectId(id) },
           { $set: updatedData },
-          { returnDocument: 'after' } // ✅ modern driver
+          { returnDocument: 'after' },// ✅ modern driver
         );
 
         if (!updateResult.value) {
