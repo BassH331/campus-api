@@ -35,10 +35,10 @@ app.use(async (req, res, next) => {
 app.use("/api/buildings", buildingRoutes);
 app.use("/api/coordinates", coordinatesRoutes);
 app.use("/api/links", linksRoutes);
-app.use("/api/uploads", uploadRoutes);
+//app.use("/api/uploads", uploadRoutes);
 
 //So it can handle file uploads
-app.use(fileUpload());
+//app.use(fileUpload());
 
 
 // Error handler (must be last)
