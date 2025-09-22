@@ -32,15 +32,8 @@ export default async function handler(req, res) {
 
   try {
     const { method } = req;
-    let { id } = req.query; // get from query if exists
-
-    // fallback: extract last segment from URL if not in query
-    if (!id) {
-      const urlParts = req.url.split('/').filter(Boolean);
-      id = urlParts[urlParts.length - 1];
-    }
-
-
+    const { id } = req.query; // works for /api/buildings?id=xyz
+    
 
     switch (method) {
       case 'GET':
