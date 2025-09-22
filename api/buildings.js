@@ -3,6 +3,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 
 let cachedDb = null;
 
+
 async function connectToDatabase() {
   if (cachedDb) return cachedDb;
 
@@ -31,7 +32,15 @@ export default async function handler(req, res) {
 
   try {
     const { method } = req;
-    const { id } = req.query; // works for /api/buildings?id=xyz
+    let { id } = req.query; // get from query if exists
+
+    // fallback: extract last segment from URL if not in query
+    if (!id) {
+      const urlParts = req.url.split('/').filter(Boolean);
+      id = urlParts[urlParts.length - 1];
+    }
+
+
 
     switch (method) {
       case 'GET':
@@ -41,7 +50,7 @@ export default async function handler(req, res) {
             logError('GET /api/buildings - invalid ObjectId', null, { id });
             return res.status(400).json({ error: 'Invalid building ID', providedId: id });
           }
-          const building = await db.collection('buildings').findOne({ _id: new ObjectId(id) });
+          const building = await db.collection('buildings').findOne({ _id: new ObjectId(String(id)) });
           if (!building) {
             logError('GET /api/buildings - not found', null, { id });
             return res.status(404).json({ error: 'Building not found', providedId: id });
@@ -67,7 +76,7 @@ export default async function handler(req, res) {
         }
         const updatedData = req.body;
         const updateResult = await db.collection('buildings').findOneAndUpdate(
-          { _id: new ObjectId(id) },
+          { _id: new ObjectId(String(id)) },
           { $set: updatedData },
           { returnDocument: 'after' }
         );
@@ -83,7 +92,7 @@ export default async function handler(req, res) {
           logError('DELETE /api/buildings - invalid ObjectId', null, { id });
           return res.status(400).json({ error: 'Invalid building ID', providedId: id });
         }
-        const deleteResult = await db.collection('buildings').deleteOne({ _id: new ObjectId(id) });
+        const deleteResult = await db.collection('buildings').deleteOne({ _id: new ObjectId(String(id)) });
         if (deleteResult.deletedCount === 0) {
           logError('DELETE /api/buildings - not found', null, { id });
           return res.status(404).json({ error: 'Building not found', providedId: id });
