@@ -10,48 +10,57 @@ export const config = {
 };
 
 export default async function handler(req, res) {
+  console.log('Upload handler called');
   if (req.method !== "POST") {
+    console.log('Wrong method:', req.method);
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     const form = new formidable.IncomingForm();
-
     form.parse(req, async (err, fields, files) => {
       if (err) {
         console.error("Form parse error:", err);
         return res.status(500).json({ error: "Error parsing form" });
       }
+      console.log('Parsed fields:', fields);
+      console.log('Parsed files:', files);
 
       if (!files.image) {
+        console.error('No image uploaded');
         return res.status(400).json({ error: "No image uploaded" });
       }
 
-      // Read file + convert to base64
-      const imageBuffer = fs.readFileSync(files.image.filepath);
-      const base64Image = imageBuffer.toString("base64");
+      try {
+        const imageBuffer = fs.readFileSync(files.image.filepath);
+        const base64Image = imageBuffer.toString("base64");
+        console.log('Image buffer length:', imageBuffer.length);
 
-      // Upload to ImgBB
-      const uploadRes = await fetch(
-        `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_KEY}`,
-        {
-          method: "POST",
-          body: new URLSearchParams({ image: base64Image }),
+        const uploadRes = await fetch(
+          `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_KEY}`,
+          {
+            method: "POST",
+            body: new URLSearchParams({ image: base64Image }),
+          }
+        );
+        const uploadData = await uploadRes.json();
+        console.log('ImgBB response:', uploadData);
+
+        if (!uploadData.success) {
+          console.error("ImgBB error:", uploadData);
+          return res.status(500).json({ error: "Failed to upload image" });
         }
-      );
-      const uploadData = await uploadRes.json();
 
-      if (!uploadData.success) {
-        console.error("ImgBB error:", uploadData);
-        return res.status(500).json({ error: "Failed to upload image" });
+        return res.status(200).json({
+          url: uploadData.data.url,
+        });
+      } catch (error) {
+        console.error("❌ Upload error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
-
-      return res.status(200).json({
-        url: uploadData.data.url,
-      });
     });
   } catch (error) {
-    console.error("❌ Upload error:", error);
+    console.error("❌ Outer upload error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 }
