@@ -19,20 +19,26 @@ export default async function handler(req, res) {
   try {
     const form = new formidable.IncomingForm();
     form.parse(req, async (err, fields, files) => {
-      if (err) {
-        console.error("Form parse error:", err);
-        return res.status(500).json({ error: "Error parsing form" });
-      }
-      console.log('Parsed fields:', fields);
-      console.log('Parsed files:', files);
+  if (err) {
+    console.error("Form parse error:", err);
+    return res.status(500).json({ error: "Error parsing form" });
+  }
+  console.log('Parsed fields:', fields);
+  console.log('Parsed files:', files);
 
-      if (!files.image) {
-        console.error('No image uploaded');
-        return res.status(400).json({ error: "No image uploaded" });
-      }
+  // Debug: log files.image
+  console.log('files.image:', files.image);
 
-      try {
-        const imageBuffer = fs.readFileSync(files.image.filepath);
+  // If files.image is an array, use files.image[0]
+  const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
+
+  if (!imageFile || !imageFile.filepath) {
+    console.error('No image uploaded or missing filepath');
+    return res.status(400).json({ error: "No image uploaded" });
+  }
+
+  try {
+    const imageBuffer = fs.readFileSync(imageFile.filepath);
         const base64Image = imageBuffer.toString("base64");
         console.log('Image buffer length:', imageBuffer.length);
 
