@@ -9,6 +9,16 @@ export const config = {
   },
 };
 
+function parseForm(req) {
+  return new Promise((resolve, reject) => {
+    const form = new formidable.IncomingForm();
+    form.parse(req, (err, fields, files) => {
+      if (err) return reject(err);
+      resolve({ fields, files });
+    });
+  });
+}
+
 export default async function handler(req, res) {
   console.log('Upload handler called');
   if (req.method !== "POST") {
@@ -17,56 +27,44 @@ export default async function handler(req, res) {
   }
 
   try {
-    const form = new formidable.IncomingForm();
-    form.parse(req, async (err, fields, files) => {
-  if (err) {
-    console.error("Form parse error:", err);
-    return res.status(500).json({ error: "Error parsing form" });
-  }
-  console.log('Parsed fields:', fields);
-  console.log('Parsed files:', files);
+    const { fields, files } = await parseForm(req);
+    console.log('Parsed fields:', fields);
+    console.log('Parsed files:', files);
 
-  // Debug: log files.image
-  console.log('files.image:', files.image);
+    // Debug: log files.image
+    console.log('files.image:', files.image);
 
-  // If files.image is an array, use files.image[0]
-  const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
+    const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
 
-  if (!imageFile || !imageFile.filepath) {
-    console.error('No image uploaded or missing filepath');
-    return res.status(400).json({ error: "No image uploaded" });
-  }
+    if (!imageFile || !imageFile.filepath) {
+      console.error('No image uploaded or missing filepath');
+      return res.status(400).json({ error: "No image uploaded" });
+    }
 
-  try {
     const imageBuffer = fs.readFileSync(imageFile.filepath);
-        const base64Image = imageBuffer.toString("base64");
-        console.log('Image buffer length:', imageBuffer.length);
+    const base64Image = imageBuffer.toString("base64");
+    console.log('Image buffer length:', imageBuffer.length);
 
-        const uploadRes = await fetch(
-          `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_KEY}`,
-          {
-            method: "POST",
-            body: new URLSearchParams({ image: base64Image }),
-          }
-        );
-        const uploadData = await uploadRes.json();
-        console.log('ImgBB response:', uploadData);
-
-        if (!uploadData.success) {
-          console.error("ImgBB error:", uploadData);
-          return res.status(500).json({ error: "Failed to upload image" });
-        }
-
-        return res.status(200).json({
-          url: uploadData.data.url,
-        });
-      } catch (error) {
-        console.error("❌ Upload error:", error);
-        res.status(500).json({ error: "Internal server error" });
+    const uploadRes = await fetch(
+      `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_KEY}`,
+      {
+        method: "POST",
+        body: new URLSearchParams({ image: base64Image }),
       }
+    );
+    const uploadData = await uploadRes.json();
+    console.log('ImgBB response:', uploadData);
+
+    if (!uploadData.success) {
+      console.error("ImgBB error:", uploadData);
+      return res.status(500).json({ error: "Failed to upload image" });
+    }
+
+    return res.status(200).json({
+      url: uploadData.data.url,
     });
   } catch (error) {
-    console.error("❌ Outer upload error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("❌ Upload error:", error);
+    res.status(500).json({ error: "Internal server error", details: error.message });
   }
 }
