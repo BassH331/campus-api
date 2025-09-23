@@ -3,7 +3,7 @@ import fetch from "node-fetch";
 
 export const config = {
   api: {
-    bodyParser: false, // disable body parsing so we can handle files
+    bodyParser: true, // disable body parsing so we can handle files
   },
 };
 
