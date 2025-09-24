@@ -42,10 +42,10 @@ app.use("/api/buildings", buildingRoutes);
 app.use("/api/coordinates", coordinatesRoutes);
 app.use("/api/links", linksRoutes);
 app.use("/api/uploads", uploadRoutes);
-app.use("/api/admins", adminRoutes);
+app.use("/api/admin", adminRoutes);
 
 //So it can handle file uploads
-app.use(fileUpload());
+//app.use(fileUpload());
 // Health check endpoint
 app.get("/api/health", (req, res) => res.json({ status: "API is running" }));
 

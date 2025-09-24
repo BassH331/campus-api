@@ -9,7 +9,7 @@ const handleError = (res, err, message = "Something went wrong") => {
 // Get all admins
 exports.getAllAdmins = async (req, res) => {
   try {
-    const admins = await req.db.collection("admin_users").find({}).toArray();
+    const admins = await req.db.collection("admins").find({}).toArray();
     res.json(admins);
   } catch (err) {
     handleError(res, err, "Failed to fetch admins");
@@ -41,7 +41,7 @@ exports.createAdmin = async (req, res) => {
       createdAt: new Date()
     };
 
-    const result = await req.db.collection("admin_users").insertOne(newAdmin);
+    const result = await req.db.collection("admins").insertOne(newAdmin);
 
     res.status(201).json({
       message: "Admin created",
@@ -61,7 +61,7 @@ exports.updateAdmin = async (req, res) => {
       ...(req.body.role && { role: req.body.role })
     };
 
-    const result = await req.db.collection("admin_users").updateOne(
+    const result = await req.db.collection("admins").updateOne(
       { _id: new ObjectId(req.params.id) },
       { $set: updatedData }
     );
@@ -79,7 +79,7 @@ exports.updateAdmin = async (req, res) => {
 exports.deleteAdmin = async (req, res) => {
   try {
     const result = await req.db
-      .collection("admin_users")
+      .collection("admins")
       .deleteOne({ _id: new ObjectId(req.params.id) });
 
     if (result.deletedCount === 0)
