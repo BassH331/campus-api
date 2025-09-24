@@ -6,7 +6,7 @@ const {
   createBuilding,
   updateBuilding,
   deleteBuilding
-} = require('../controllers/buildingsController'); // Make sure this points to the upgraded controller
+} = require('../controllers/buildingController'); // Make sure this points to the upgraded controller
 
 const router = express.Router();
 

@@ -7,7 +7,7 @@ const router = express.Router();
 // READ all admins
 router.get("/", async (req, res) => {
   try {
-    const admins = await req.db.collection("admins").find({}).toArray();
+    const admins = await req.db.collection("admin_users").find({}).toArray();
     res.json(admins);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -17,7 +17,7 @@ router.get("/", async (req, res) => {
 // READ single admin by ID
 router.get("/:id", async (req, res) => {
   try {
-    const admin = await req.db.collection("admins").findOne({ _id: new ObjectId(req.params.id) });
+    const admin = await req.db.collection("admin_users").findOne({ _id: new ObjectId(req.params.id) });
     if (!admin) return res.status(404).json({ error: "Admin not found" });
     res.json(admin);
   } catch (err) {
@@ -35,7 +35,7 @@ router.post("/", async (req, res) => {
       department: req.body.department || "Admin",
       password: req.body.password, // ⚠️ hash in production!
     };
-    const result = await req.db.collection("admins").insertOne(newAdmin);
+    const result = await req.db.collection("admin_users").insertOne(newAdmin);
     res.status(201).json({ message: "Admin created", id: result.insertedId });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -52,7 +52,7 @@ router.put("/:id", async (req, res) => {
       ...(req.body.department && { department: req.body.department }),
       ...(req.body.password && { password: req.body.password }),
     };
-    const result = await req.db.collection("admins").updateOne(
+    const result = await req.db.collection("admin_users").updateOne(
       { _id: new ObjectId(req.params.id) },
       { $set: updateData }
     );
@@ -66,7 +66,7 @@ router.put("/:id", async (req, res) => {
 // DELETE admin
 router.delete("/:id", async (req, res) => {
   try {
-    const result = await req.db.collection("admins").deleteOne({ _id: new ObjectId(req.params.id) });
+    const result = await req.db.collection("admin_users").deleteOne({ _id: new ObjectId(req.params.id) });
     if (result.deletedCount === 0) return res.status(404).json({ error: "Admin not found" });
     res.json({ message: "Admin deleted" });
   } catch (err) {
