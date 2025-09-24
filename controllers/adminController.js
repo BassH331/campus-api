@@ -20,7 +20,7 @@ exports.getAllAdmins = async (req, res) => {
 exports.getAdminById = async (req, res) => {
   try {
     const admin = await req.db
-      .collection("admin_users")
+      .collection("admins")
       .findOne({ _id: new ObjectId(req.params.id) });
 
     if (!admin) return res.status(404).json({ error: "Admin not found" });
@@ -30,6 +30,21 @@ exports.getAdminById = async (req, res) => {
     handleError(res, err, "Failed to fetch admin");
   }
 };
+
+// Get admin by email
+exports.getAdminByEmail = async (req, res) => {
+  try {
+    const email = req.params.email.toLowerCase();
+    const admin = await req.db.collection("admins").findOne({ email });
+
+    if (!admin) return res.status(404).json({ error: "Admin not found" });
+
+    res.json(admin);
+  } catch (err) {
+    handleError(res, err, "Failed to fetch admin by email");
+  }
+};
+
 
 // Create new admin
 exports.createAdmin = async (req, res) => {
