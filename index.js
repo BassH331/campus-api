@@ -9,6 +9,9 @@ const buildingRoutes = require("./routes/buildingRoutes");
 const coordinatesRoutes = require("./routes/coordinatesRoutes");
 const linksRoutes = require("./routes/linksRoutes");
 const uploadRoutes = require("./routes/uploads");
+const adminRoutes = require("./routes/adminRoutes");
+//const fileUpload = require("express-fileupload");
+
 
 const app = express();
 
@@ -39,6 +42,7 @@ app.use("/api/buildings", buildingRoutes);
 app.use("/api/coordinates", coordinatesRoutes);
 app.use("/api/links", linksRoutes);
 app.use("/api/uploads", uploadRoutes);
+app.use("/api/admins", adminRoutes);
 
 //So it can handle file uploads
 app.use(fileUpload());
