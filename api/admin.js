@@ -15,7 +15,7 @@ async function connectToDatabase() {
 
 export default async function handler(req, res) {
   const db = await connectToDatabase();
-  const collection = db.collection("admins");
+  const collection = db.collection("admin_users");
 
   try {
     switch (req.method) {
