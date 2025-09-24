@@ -1,6 +1,7 @@
 const { ObjectId } = require("mongodb");
 
 // Centralized error handler
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const handleError = (res, err, message = "Something went wrong") => {
   console.error(err); // log details for debugging
   res.status(500).json({ error: message });
@@ -34,8 +35,16 @@ exports.getAdminById = async (req, res) => {
 // Get admin by email
 exports.getAdminByEmail = async (req, res) => {
   try {
-    const email = req.params.email.toLowerCase();
-    const admin = await req.db.collection("admins").findOne({ email });
+    const rawEmail = req.params.email || "";
+    console.log("getAdminByEmail called with:", rawEmail);
+
+    const email = rawEmail.trim();
+    if (!email) return res.status(400).json({ error: "Email required" });
+
+    // case-insensitive exact match using anchored regex (safer than toLowerCase assumptions)
+    const admin = await req.db.collection("admins").findOne({
+      email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" },
+    });
 
     if (!admin) return res.status(404).json({ error: "Admin not found" });
 
