@@ -4,7 +4,7 @@ const {
   getAdminById,
   createAdmin,
   updateAdmin,
-  deleteAdmin
+  deleteAdmin,
 } = require("../controllers/adminController");
 
 const router = express.Router();
