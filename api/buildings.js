@@ -53,12 +53,9 @@ const findOneByAny = async (db, id) => {
 
 const updateOneByAny = async (db, id, updatedData) => {
   for (const key of buildLookupKeys(id)) {
-    const res = await db.collection('buildings').findOneAndUpdate(
-      key,
-      { $set: updatedData },
-      { returnDocument: 'after' }
-    );
-    if (res && res.value) return res.value;
+    await db.collection('buildings').updateOne(key, { $set: updatedData });
+    const updated = await db.collection('buildings').findOne(key);
+    if (updated) return updated;
   }
   return null;
 };
