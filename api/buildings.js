@@ -3,7 +3,6 @@ import { MongoClient, ObjectId } from 'mongodb';
 
 let cachedDb = null;
 
-
 async function connectToDatabase() {
   if (cachedDb) return cachedDb;
 
@@ -23,13 +22,53 @@ async function connectToDatabase() {
 // Helper for error logging
 const logError = (context, err, extra = {}) => {
   console.error('❌ ERROR CONTEXT:', context);
-  if (Object.keys(extra).length) console.error('Extra info:', JSON.stringify(extra, null, 2));
+  if (extra && Object.keys(extra).length) {
+    console.error('Extra info:', JSON.stringify(extra, null, 2));
+  }
   if (err) {
-  console.error('Stack:', err.stack || err);
-} else {
-  console.error('No error object provided.');
-}
+    console.error('Stack:', err.stack || err);
+  } else {
+    console.error('No error object provided.');
+  }
+};
 
+// Flexible ID resolution helpers
+const buildLookupKeys = (id) => {
+  const keys = [];
+  if (id && ObjectId.isValid(id)) keys.push({ _id: new ObjectId(id) });
+  if (id) {
+    keys.push({ providedid: id });  // lowercase variant
+    keys.push({ providedId: id });  // camelCase variant
+  }
+  return keys;
+};
+
+const findOneByAny = async (db, id) => {
+  for (const key of buildLookupKeys(id)) {
+    const doc = await db.collection('buildings').findOne(key);
+    if (doc) return doc;
+  }
+  return null;
+};
+
+const updateOneByAny = async (db, id, updatedData) => {
+  for (const key of buildLookupKeys(id)) {
+    const res = await db.collection('buildings').findOneAndUpdate(
+      key,
+      { $set: updatedData },
+      { returnDocument: 'after' }
+    );
+    if (res.value) return res.value;
+  }
+  return null;
+};
+
+const deleteOneByAny = async (db, id) => {
+  for (const key of buildLookupKeys(id)) {
+    const res = await db.collection('buildings').deleteOne(key);
+    if (res.deletedCount === 1) return true;
+  }
+  return false;
 };
 
 export default async function handler(req, res) {
@@ -37,70 +76,60 @@ export default async function handler(req, res) {
 
   try {
     const { method } = req;
-    const { id } = req.query; // works for /api/buildings?id=xyz
-    
+    const { id } = req.query; // /api/buildings?id=xyz
 
     switch (method) {
-      case 'GET':
+      case 'GET': {
         if (id) {
-          // GET by ID
-          if (!ObjectId.isValid(id)) {
-            logError('GET /api/buildings - invalid ObjectId', null, { id });
-            return res.status(400).json({ error: 'Invalid building ID', providedId: id });
-          }
-          const building = await db.collection('buildings').findOne({ _id: new ObjectId(id) });
+          const building = await findOneByAny(db, id);
           if (!building) {
             logError('GET /api/buildings - not found', null, { id });
             return res.status(404).json({ error: 'Building not found', providedId: id });
           }
           return res.status(200).json(building);
-        } else {
-          // GET all
-          const buildings = await db.collection('buildings').find({}).toArray();
-          return res.status(200).json(buildings);
         }
+        const buildings = await db.collection('buildings').find({}).toArray();
+        return res.status(200).json(buildings);
+      }
 
-      case 'POST':
-        // CREATE
+      case 'POST': {
         const newBuilding = req.body;
         const insertResult = await db.collection('buildings').insertOne(newBuilding);
-        return res.status(201).json(insertResult.ops?.[0] || { ...newBuilding, _id: insertResult.insertedId });
+        return res
+          .status(201)
+          .json(insertResult.ops?.[0] || { ...newBuilding, _id: insertResult.insertedId });
+      }
 
-      case 'PUT':
-        // UPDATE
-        if (!id || !ObjectId.isValid(id)) {
-          logError('PUT /api/buildings - invalid ObjectId', null, { id, body: req.body });
-          return res.status(400).json({ error: 'Invalid building ID', providedId: id });
+      case 'PUT': {
+        if (!id) {
+          logError('PUT /api/buildings - missing id', null, { body: req.body });
+          return res.status(400).json({ error: 'Missing building ID', providedId: id });
         }
-        const updatedData = req.body;
-        const updateResult = await db.collection('buildings').findOneAndUpdate(
-          { _id: new ObjectId(id) },
-          { $set: updatedData },
-          { returnDocument: 'after' },// ✅ modern driver
-        );
-
-        if (!updateResult.value) {
-          logError('PUT /api/buildings - not found', null, { id, body: updatedData });
+        const updated = await updateOneByAny(db, id, req.body);
+        if (!updated) {
+          logError('PUT /api/buildings - not found', null, { id, body: req.body });
           return res.status(404).json({ error: 'Building not found', providedId: id });
         }
-        return res.status(200).json(updateResult.value);
+        return res.status(200).json(updated);
+      }
 
-      case 'DELETE':
-        // DELETE
-        if (!id || !ObjectId.isValid(id)) {
-          logError('DELETE /api/buildings - invalid ObjectId', null, { id });
-          return res.status(400).json({ error: 'Invalid building ID', providedId: id });
+      case 'DELETE': {
+        if (!id) {
+          logError('DELETE /api/buildings - missing id');
+          return res.status(400).json({ error: 'Missing building ID', providedId: id });
         }
-        const deleteResult = await db.collection('buildings').deleteOne({ _id: new ObjectId(id) });
-        if (deleteResult.deletedCount === 0) {
+        const deleted = await deleteOneByAny(db, id);
+        if (!deleted) {
           logError('DELETE /api/buildings - not found', null, { id });
           return res.status(404).json({ error: 'Building not found', providedId: id });
         }
         return res.status(200).json({ message: 'Building deleted successfully', deletedId: id });
+      }
 
-      default:
+      default: {
         res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
         return res.status(405).end(`Method ${method} Not Allowed`);
+      }
     }
   } catch (err) {
     logError('API Handler /api/buildings', err, { method: req.method, query: req.query, body: req.body });
