@@ -1,10 +1,30 @@
+// controllers/buildingController.js
 import { ObjectId } from 'mongodb';
-const { connectToDatabase } = require('../utils/mongoClient');
+import { connectToDatabase } from '../utils/mongoClient.js';
 
 const logError = (context, err, extra = {}) => {
   console.error('❌ ERROR CONTEXT:', context);
-  console.error('Details:', JSON.stringify(extra, null, 2));
-  console.error('Stack trace:', err.stack || err);
+  if (extra && Object.keys(extra).length) {
+    console.error('Details:', JSON.stringify(extra, null, 2));
+  }
+  if (err) {
+    console.error('Stack trace:', err.stack || err);
+  }
+};
+
+const getIdFromReq = (req) => req.params?.id || req.query?.id || req.body?.id || null;
+
+const buildLookup = (id) => {
+  const keys = [];
+  const s = id != null ? String(id) : '';
+
+  if (s && ObjectId.isValid(s)) keys.push({ _id: new ObjectId(s) });
+  if (s) {
+    // Support both spellings
+    keys.push({ providedId: s }, { providedid: s });
+  }
+
+  return keys.length ? { $or: keys } : null;
 };
 
 // Get all buildings
@@ -19,18 +39,19 @@ export const getAllBuildings = async (req, res) => {
   }
 };
 
-// Get building by ID
+// Get building by ID (supports ?id= and /:id, and providedId/providedid)
 export const getBuildingById = async (req, res) => {
-  const id = req.params.id;
+  const id = getIdFromReq(req);
   try {
     const db = await connectToDatabase();
 
-    if (!ObjectId.isValid(id)) {
-      logError('getBuildingById - Invalid ObjectId', null, { id });
+    const criteria = buildLookup(id);
+    if (!criteria) {
+      logError('getBuildingById - Invalid ID', null, { id });
       return res.status(400).json({ error: 'Invalid building ID', providedId: id });
     }
 
-    const building = await db.collection('buildings').findOne({ _id: new ObjectId(String(id)) });
+    const building = await db.collection('buildings').findOne(criteria);
     if (!building) {
       logError('getBuildingById - Not Found', null, { id });
       return res.status(404).json({ error: 'Building not found', providedId: id });
@@ -49,28 +70,28 @@ export const createBuilding = async (req, res) => {
   try {
     const db = await connectToDatabase();
     const result = await db.collection('buildings').insertOne(newBuilding);
-
-    res.status(201).json(result.ops?.[0] || { ...newBuilding, _id: result.insertedId });
+    res.status(201).json({ ...newBuilding, _id: result.insertedId });
   } catch (err) {
     logError('createBuilding', err, { newBuilding });
     res.status(500).json({ error: 'Failed to create building', details: err.message });
   }
 };
 
-// Update a building
+// Update a building (supports ?id= and /:id, resolves by _id or providedId/providedid)
 export const updateBuilding = async (req, res) => {
-  const id = req.params.id;
-  const updatedData = req.body;
+  const id = getIdFromReq(req);
+  const updatedData = req.body || {};
   try {
     const db = await connectToDatabase();
 
-    if (!ObjectId.isValid(id)) {
-      logError('updateBuilding - Invalid ObjectId', null, { id, updatedData });
+    const criteria = buildLookup(id);
+    if (!criteria) {
+      logError('updateBuilding - Invalid ID', null, { id, updatedData });
       return res.status(400).json({ error: 'Invalid building ID', providedId: id });
     }
 
     const result = await db.collection('buildings').findOneAndUpdate(
-      { _id: new ObjectId(String(id)) },
+      criteria,
       { $set: updatedData },
       { returnDocument: 'after' }
     );
@@ -87,18 +108,19 @@ export const updateBuilding = async (req, res) => {
   }
 };
 
-// Delete a building
+// Delete a building (supports ?id= and /:id, resolves by _id or providedId/providedid)
 export const deleteBuilding = async (req, res) => {
-  const id = req.params.id;
+  const id = getIdFromReq(req);
   try {
     const db = await connectToDatabase();
 
-    if (!ObjectId.isValid(id)) {
-      logError('deleteBuilding - Invalid ObjectId', null, { id });
+    const criteria = buildLookup(id);
+    if (!criteria) {
+      logError('deleteBuilding - Invalid ID', null, { id });
       return res.status(400).json({ error: 'Invalid building ID', providedId: id });
     }
 
-    const result = await db.collection('buildings').deleteOne({ _id: new ObjectId(String(id)) });
+    const result = await db.collection('buildings').deleteOne(criteria);
     if (result.deletedCount === 0) {
       logError('deleteBuilding - Not Found', null, { id });
       return res.status(404).json({ error: 'Building not found', providedId: id });
