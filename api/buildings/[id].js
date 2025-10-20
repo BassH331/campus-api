@@ -86,12 +86,13 @@ export default async function handler(req, res) {
       }
 
       case 'PUT': {
-        const updated = await updateOneByAny(db, id, req.body);
-        if (!updated) {
-          logError('PUT /api/buildings/:id - not found', null, { id, body: req.body });
+        await updateOneByAny(db, id, req.body);
+        const after = await findOneByAny(db, id);
+        if (!after) {
+          logError('PUT /api/buildings/:id - not found after update', null, { id, body: req.body });
           return res.status(404).json({ error: 'Building not found', providedId: id });
         }
-        return res.status(200).json(updated);
+        return res.status(200).json(after);
       }
 
       case 'DELETE': {
