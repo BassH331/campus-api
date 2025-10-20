@@ -6,7 +6,7 @@ const {
   createBuilding,
   updateBuilding,
   deleteBuilding
-} = require('../controllers/buildingsController'); // Make sure this points to the upgraded controller
+} = require('../controllers/buildingController'); // Fixed import to match file name
 
 const router = express.Router();
 
