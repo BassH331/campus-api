@@ -58,7 +58,7 @@ const updateOneByAny = async (db, id, updatedData) => {
       { $set: updatedData },
       { returnDocument: 'after' }
     );
-    if (res.value) return res.value;
+    if (res && res.value) return res.value;
   }
   return null;
 };
