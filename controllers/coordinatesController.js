@@ -1,29 +1,52 @@
 const { connectToDatabase } = require('../utils/mongoClient');
 
-exports.getCoordinatesByName = async (req, res) => {
+exports.getCoordinates = async (req, res) => {
   try {
-    const { name } = req.query;
-    console.log("[📥 Incoming Request] name:", name);
+    const db = await connectToDatabase();
+    const { name, buildingId } = req.query;
 
-    if (!name) {
-      return res.status(400).json({ error: "Query parameter 'name' is required" });
+    // Handle lookup by buildingId
+    if (buildingId) {
+      console.log("📍 Searching coordinates for buildingId:", buildingId);
+
+      const doc = await db.collection('coordinates').findOne({
+        buildingId: String(buildingId)
+      });
+
+      if (doc) {
+        console.log("✅ Coordinates found for buildingId:", buildingId);
+        return res.json(doc);
+      }
+
+      console.warn("❌ No coordinates found for buildingId:", buildingId);
+      return res.status(404).json({ error: 'No coordinates found for this buildingId' });
     }
 
-    const db = await connectToDatabase();
+    // Handle lookup by name
+    if (name) {
+      const inputName = name.toLowerCase().trim().replace(/\s+/g, ' ');
+      console.log("📥 Searching coordinates for name:", inputName);
 
-    const coordinates = await db.collection('coordinates').findOne({
-      name: { $regex: new RegExp(`^${name}$`, 'i') }  // Case-insensitive exact match
-    });
+      const doc = await db.collection('coordinates').findOne({
+        name: { $regex: new RegExp(`^${inputName}$`, 'i') }
+      });
 
-    if (!coordinates) {
-      console.log("[❌ Not Found] No coordinates for:", name);
+      if (doc) {
+        console.log("✅ Coordinates found for name:", doc.name);
+        return res.json(doc);
+      }
+
+      console.warn("❌ No coordinates found for name:", inputName);
       return res.status(404).json({ error: 'No coordinates found for this name' });
     }
 
-    console.log("[✅ Found] Coordinates:", coordinates);
-    res.json(coordinates);
+    // If no query params provided — return all
+    console.log("📦 Fetching all coordinates...");
+    const list = await db.collection('coordinates').find({}).toArray();
+    res.json(list);
+
   } catch (err) {
-    console.error("[💥 Error] Fetch failed:", err);
-    res.status(500).json({ error: 'Failed to fetch coordinates' });
+    console.error('❌ Coordinates lookup error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };

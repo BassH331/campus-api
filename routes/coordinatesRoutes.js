@@ -1,7 +1,8 @@
 const express = require('express');
-const { getCoordinatesByName } = require('../controllers/coordinatesController');
 const router = express.Router();
+const { getCoordinates } = require('../controllers/coordinatesController');
 
-router.get('/', getCoordinatesByName);
+// GET /coordinates?name=... or /coordinates?buildingId=...
+router.get('/', getCoordinates);
 
 module.exports = router;
