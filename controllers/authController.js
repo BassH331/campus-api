@@ -34,6 +34,86 @@ const unlockIfExpired = async (collection, user) => {
   return user;
 };
 
+const REQUIRED_FIELDS = [
+  'name',
+  'email',
+  'password',
+  'studentNumber',
+  'year',
+  'qualification',
+  'department',
+  'userType',
+];
+
+const normalizeEmail = (email) => email.trim().toLowerCase();
+
+const ensurePasswordHash = async (password) => {
+  if (!password) return null;
+  const isAlreadyHashed = password.startsWith('$2b$') || password.startsWith('$2a$');
+  if (isAlreadyHashed) return password;
+  return bcrypt.hash(password, 12);
+};
+
+exports.register = async (req, res) => {
+  try {
+    const payload = req.body || {};
+
+    const missing = REQUIRED_FIELDS.filter((field) => !payload[field]);
+    if (missing.length) {
+      return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
+    }
+
+    const email = normalizeEmail(payload.email);
+
+    const db = await connectToDatabase();
+    const usersCollection = db.collection('users');
+
+    const duplicateEmail = await usersCollection.findOne({ email });
+    if (duplicateEmail) {
+      return res.status(409).json({ error: 'Email already registered.' });
+    }
+
+    const normalizedStudentNumber = String(payload.studentNumber).trim();
+    const duplicateStudent = await usersCollection.findOne({ studentNumber: normalizedStudentNumber });
+    if (duplicateStudent) {
+      return res.status(409).json({ error: 'Student number already registered.' });
+    }
+
+    const hashedPassword = await ensurePasswordHash(payload.password);
+
+    const now = new Date();
+    const userDocument = {
+      name: payload.name,
+      email,
+      studentNumber: normalizedStudentNumber,
+      year: payload.year,
+      qualification: payload.qualification,
+      department: payload.department,
+      userType: payload.userType,
+      password: hashedPassword,
+      isVerified: Boolean(payload.isVerified ?? true),
+      hasCompletedTutorial: Boolean(payload.hasCompletedTutorial ?? false),
+      loginAttempts: 0,
+      accountLocked: false,
+      lockUntil: null,
+      createdAt: now,
+      updatedAt: now,
+      lastLogin: null,
+    };
+
+    const insertResult = await usersCollection.insertOne(userDocument);
+    const savedUser = {
+      _id: insertResult.insertedId,
+      ...userDocument,
+    };
+
+    return res.status(201).json({ user: sanitizeUser(savedUser) });
+  } catch (err) {
+    console.error('❌ Registration error:', err);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body || {};
